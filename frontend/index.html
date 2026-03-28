@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DocuMind Lite</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card">
+      <h1>DocuMind Lite</h1>
+      <p class="subtitle">Upload a PDF and ask grounded questions about it.</p>
+
+      <div class="section">
+        <label for="pdfFile">Upload PDF</label>
+        <input id="pdfFile" type="file" accept="application/pdf" />
+        <button id="uploadButton" type="button">Upload</button>
+        <p id="uploadStatus" class="status"></p>
+      </div>
+
+      <div class="section">
+        <label for="questionInput">Ask a question</label>
+        <textarea
+          id="questionInput"
+          rows="4"
+          placeholder="What does this document say about...?"
+        ></textarea>
+        <button id="askButton" type="button">Ask</button>
+      </div>
+
+      <div id="loader" class="loader hidden"></div>
+      <p id="errorMessage" class="status error"></p>
+
+      <section id="responsePanel" class="response hidden">
+        <h2>Answer</h2>
+        <p id="answerText"></p>
+        <p id="providerText" class="provider"></p>
+
+        <h3>Top Matching Chunks</h3>
+        <div id="sourcesList" class="sources"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>

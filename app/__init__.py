@@ -1,0 +1,1 @@
+"""DocuMind Lite application package."""

@@ -1,0 +1,17 @@
+services:
+  documind-lite:
+    build: .
+    container_name: documind-lite
+    ports:
+      - "8000:8000"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      HUGGINGFACE_MODEL: ${HUGGINGFACE_MODEL:-google/flan-t5-base}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      CHROMA_PERSIST_DIR: /app/chroma_data
+      UPLOAD_DIR: /app/uploads
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./chroma_data:/app/chroma_data
