@@ -7,4 +7,5 @@ uploads/*
 chroma_data/*
 !chroma_data/.gitkeep
 .venv/
+venv/
 .env
