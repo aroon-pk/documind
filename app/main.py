@@ -12,7 +12,9 @@ from app.db.chroma import ChromaVectorStore
 from app.embedding import EmbeddingService
 from app.rag import RAGService
 from app.routes.ask import router as ask_router
+from app.routes.documents import router as documents_router
 from app.routes.upload import router as upload_router
+from app.services.agent_service import AgentService
 from app.services.document_service import DocumentService
 from app.services.llm_service import LLMService
 
@@ -43,10 +45,15 @@ async def lifespan(app: FastAPI):
         vector_store=vector_store,
         llm_service=llm_service,
     )
+    agent_service = AgentService(
+        rag_service=rag_service,
+        llm_service=llm_service,
+    )
     document_service = DocumentService(upload_dir=UPLOAD_DIR, rag_service=rag_service)
 
     app.state.document_service = document_service
     app.state.rag_service = rag_service
+    app.state.agent_service = agent_service
 
     logger.info("DocuMind Lite started")
     yield
@@ -55,8 +62,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="DocuMind Lite",
-    description="Upload PDFs and ask questions using a lightweight RAG pipeline.",
-    version="1.0.0",
+    description="Upload PDFs and ask questions using a LangChain and LangGraph powered RAG pipeline.",
+    version="1.3.0",
     lifespan=lifespan,
 )
 
@@ -70,6 +77,7 @@ app.add_middleware(
 
 app.include_router(upload_router)
 app.include_router(ask_router)
+app.include_router(documents_router)
 
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")

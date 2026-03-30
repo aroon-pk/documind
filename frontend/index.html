@@ -4,43 +4,234 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DocuMind Lite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <main class="page">
-    <section class="card">
-      <h1>DocuMind Lite</h1>
-      <p class="subtitle">Upload a PDF and ask grounded questions about it.</p>
-
-      <div class="section">
-        <label for="pdfFile">Upload PDF</label>
-        <input id="pdfFile" type="file" accept="application/pdf" />
-        <button id="uploadButton" type="button">Upload</button>
-        <p id="uploadStatus" class="status"></p>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero__copy">
+        <div class="hero__badge">DocuMind Lite</div>
+        <h1>Turn messy PDFs into answers you can actually trust.</h1>
+        <p>
+          Upload one or more PDFs, ask natural questions, and get grounded answers with citations, page-aware evidence, and an explainable agent workflow.
+        </p>
+        <div class="hero__tags">
+          <span>Multi-PDF search</span>
+          <span>Source citations</span>
+          <span>Agentic workflow</span>
+        </div>
       </div>
 
-      <div class="section">
-        <label for="questionInput">Ask a question</label>
-        <textarea
-          id="questionInput"
-          rows="4"
-          placeholder="What does this document say about...?"
-        ></textarea>
-        <button id="askButton" type="button">Ask</button>
+      <div class="hero__metrics">
+        <article class="metric-card">
+          <span class="metric-card__label">Indexed PDFs</span>
+          <strong id="documentsCount">0</strong>
+          <span class="metric-card__detail">Ready knowledge sources</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-card__label">Current scope</span>
+          <strong id="scopeSummary">No scope yet</strong>
+          <span class="metric-card__detail">Where the next question will search</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-card__label">Answer mode</span>
+          <strong id="agentSummary">Planner inactive</strong>
+          <span class="metric-card__detail">Visible agent steps for each answer</span>
+        </article>
       </div>
-
-      <div id="loader" class="loader hidden"></div>
-      <p id="errorMessage" class="status error"></p>
-
-      <section id="responsePanel" class="response hidden">
-        <h2>Answer</h2>
-        <p id="answerText"></p>
-        <p id="providerText" class="provider"></p>
-
-        <h3>Top Matching Chunks</h3>
-        <div id="sourcesList" class="sources"></div>
-      </section>
     </section>
+
+    <section id="statusBanner" class="status-banner info" aria-live="polite">
+      <span class="status-banner__dot"></span>
+      <strong>Status</strong>
+      <span id="statusText">No PDFs loaded yet. Upload your first document to start building the knowledge base.</span>
+    </section>
+
+    <section class="workspace">
+      <div class="workspace__controls">
+        <article class="surface surface--intro">
+          <div class="surface__header">
+            <p class="surface__eyebrow">Workflow</p>
+            <h2>Simple process, professional output</h2>
+          </div>
+          <div class="workflow-list">
+            <div class="workflow-item">
+              <span class="workflow-item__number">01</span>
+              <div>
+                <h3>Add PDFs</h3>
+                <p>Upload one PDF or create a small searchable document set.</p>
+              </div>
+            </div>
+            <div class="workflow-item" id="workflowAsk">
+              <span class="workflow-item__number">02</span>
+              <div>
+                <h3>Plan and retrieve</h3>
+                <p>The agent chooses a strategy, runs retrieval, and refines the query when needed.</p>
+              </div>
+            </div>
+            <div class="workflow-item" id="workflowReview">
+              <span class="workflow-item__number">03</span>
+              <div>
+                <h3>Inspect the evidence</h3>
+                <p>Review the cited answer, the agent steps, filenames, page ranges, and matching chunks.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="surface">
+          <div class="surface__header">
+            <p class="surface__eyebrow">Step 1</p>
+            <h2>Build your knowledge base</h2>
+            <p class="surface__text">Drag and drop a PDF or browse from your computer. Every upload is chunked, embedded, and stored in ChromaDB.</p>
+          </div>
+
+          <label class="field-label" for="pdfFile">Upload area</label>
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-describedby="selectedFileText">
+            <input id="pdfFile" class="dropzone__input" type="file" accept="application/pdf" />
+            <div class="dropzone__icon">PDF</div>
+            <div>
+              <p class="dropzone__title">Drop a PDF here or click to browse</p>
+              <p class="dropzone__subtitle">Supports text-based PDF files for fast retrieval.</p>
+            </div>
+          </div>
+          <p id="selectedFileText" class="field-note">No file selected yet.</p>
+
+          <button id="uploadButton" type="button" class="button button--primary">Upload and index PDF</button>
+        </article>
+
+        <article class="surface">
+          <div class="surface__header">
+            <p class="surface__eyebrow">Step 2</p>
+            <h2>Ask a meaningful question</h2>
+            <p class="surface__text">Pick the search scope, write your question, or use one of the guided prompts.</p>
+          </div>
+
+          <div class="field-grid">
+            <div>
+              <label class="field-label" for="documentScope">Search scope</label>
+              <select id="documentScope" class="field-input" disabled>
+                <option value="">Upload a PDF first</option>
+              </select>
+            </div>
+          </div>
+
+          <label class="field-label" for="questionInput">Question</label>
+          <textarea
+            id="questionInput"
+            class="field-input field-input--textarea"
+            rows="6"
+            placeholder="Example: Compare the problem and solution described across these PDFs."
+            disabled
+          ></textarea>
+
+          <div class="prompt-chips" role="list" aria-label="Suggested prompts">
+            <button type="button" class="chip-button" data-question="Summarize this PDF in simple words.">Quick summary</button>
+            <button type="button" class="chip-button" data-question="What are the key points in this PDF?">Key points</button>
+            <button type="button" class="chip-button" data-question="Compare the main problem and solution across these PDFs.">Compare documents</button>
+          </div>
+
+          <button id="askButton" type="button" class="button button--primary" disabled>Run agent and generate answer</button>
+          <p class="field-note">Tip: press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to ask quickly.</p>
+        </article>
+
+        <article class="surface">
+          <div class="surface__header surface__header--split">
+            <div>
+              <p class="surface__eyebrow">Library</p>
+              <h2>Indexed documents</h2>
+            </div>
+            <span class="library-count" id="libraryCount">0 documents</span>
+          </div>
+          <div id="uploadedDocsList" class="library-list">
+            <p class="library-empty">No PDFs indexed yet.</p>
+          </div>
+        </article>
+      </div>
+
+      <aside class="workspace__results">
+        <article class="surface surface--answer">
+          <div class="surface__header">
+            <p class="surface__eyebrow">Step 3</p>
+            <h2>Answer and evidence</h2>
+            <p id="providerText" class="surface__text">Upload a PDF and ask a question to see the answer here.</p>
+          </div>
+
+          <div id="answerEmptyState" class="answer-empty">
+            <div class="answer-empty__icon">AI</div>
+            <h3>No answer yet</h3>
+            <p>Your final answer will appear here with citations, agent steps, and supporting chunks.</p>
+          </div>
+
+          <div id="answerContent" class="answer-content hidden">
+            <section class="answer-card">
+              <div class="answer-card__header">
+                <h3>Generated answer</h3>
+                <button id="copyAnswerButton" type="button" class="ghost-button">Copy answer</button>
+              </div>
+              <p id="answerText"></p>
+            </section>
+
+            <section class="agent-block">
+              <div class="sources-block__header">
+                <h3>Agent workflow</h3>
+                <p id="agentMetaText">The planner steps will appear here.</p>
+              </div>
+              <div id="agentStepsList" class="agent-steps-list"></div>
+            </section>
+
+            <section class="sources-block">
+              <div class="sources-block__header">
+                <h3>Supporting source chunks</h3>
+                <p>The answer above is grounded in these retrieved chunks.</p>
+              </div>
+              <div id="sourcesList" class="sources-list"></div>
+            </section>
+          </div>
+        </article>
+
+        <article class="surface surface--history">
+          <div class="surface__header surface__header--split">
+            <div class="surface__header-copy">
+              <p class="surface__eyebrow">Recent questions</p>
+              <h2>Reuse good prompts</h2>
+            </div>
+            <button id="clearHistoryButton" type="button" class="ghost-button">Clear</button>
+          </div>
+          <div id="historyList" class="history-list">
+            <p class="history-empty">No questions asked yet.</p>
+          </div>
+        </article>
+      </aside>
+    </section>
+
+    <div id="sourceModal" class="modal hidden" aria-hidden="true">
+      <div class="modal__backdrop" data-close-modal="true"></div>
+      <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="sourceModalTitle">
+        <div class="modal__header">
+          <div>
+            <p class="surface__eyebrow">Source details</p>
+            <h2 id="sourceModalTitle">Full source chunk</h2>
+          </div>
+          <button id="closeModalButton" type="button" class="ghost-button">Close</button>
+        </div>
+        <div class="modal__meta">
+          <span id="sourceModalFile" class="source-card__pill"></span>
+          <span id="sourceModalPage" class="source-card__pill"></span>
+        </div>
+        <div class="modal__body">
+          <p id="sourceModalText"></p>
+        </div>
+      </div>
+    </div>
+
+    <div id="loader" class="loader-banner hidden" aria-live="polite">
+      <span class="loader-spinner"></span>
+      <p id="loaderText">Working on your request...</p>
+    </div>
   </main>
 
   <script src="/static/script.js"></script>

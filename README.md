@@ -1,17 +1,45 @@
 # DocuMind Lite
 
-DocuMind Lite is a minimal RAG web application for uploading PDFs and asking grounded questions about their contents. It uses FastAPI on the backend, a vanilla HTML/CSS/JavaScript frontend, sentence-transformers for embeddings, ChromaDB for vector search, and OpenAI or Hugging Face for answer generation.
+DocuMind Lite is a minimal document intelligence app for uploading PDFs and asking grounded questions about their contents. It uses FastAPI on the backend, a vanilla HTML/CSS/JavaScript frontend, sentence-transformers for embeddings, ChromaDB for vector search, LangChain for model orchestration, and LangGraph for the agent workflow.
 
 ## Features
 
-- Upload a PDF with `POST /upload`
+- Upload one or more PDFs with `POST /upload`
+- Drag-and-drop upload zone for faster document ingestion
+- Delete indexed PDFs with `DELETE /documents/{document_id}`
 - Extract text with `pypdf`
 - Chunk text into 500-word chunks with 50-word overlap
+- Track source pages for every chunk
 - Generate embeddings with `sentence-transformers`
 - Store chunks and embeddings in ChromaDB
 - Ask questions with `POST /ask`
-- Retrieve the top 3 relevant chunks and answer with OpenAI or a Hugging Face fallback model
-- Basic logging, loading state, and input validation
+- Search a single document or all indexed documents
+- Retrieve the top 3 to 5 relevant chunks and answer with inline source citations such as `[Source 1]`
+- Display source confidence labels on retrieved chunks
+- Copy generated answers with one click
+- Keep a recent-question history in the browser for prompt reuse
+- List indexed documents with `GET /documents`
+- Show an explainable LangGraph workflow with visible planning, retrieval, refinement, and generation steps
+- Basic logging, loading state, keyboard shortcut support, and input validation
+
+## Agentic Layer
+
+DocuMind Lite now uses a real LangGraph planner-executor workflow on top of the RAG pipeline.
+
+The graph runs these steps:
+
+- `plan`: build a question plan using LangChain structured output when OpenAI is available, with a heuristic fallback when it is not
+- `retrieve_primary`: run the first similarity search against ChromaDB
+- `retrieve_refined`: conditionally run a second retrieval pass when evidence is weak or incomplete
+- `generate_answer`: produce the final grounded answer with inline citations
+
+This makes the app more than a fixed retrieve-and-answer flow: it now performs explicit graph-based planning and adaptive execution before answer generation.
+
+## LangChain Usage
+
+- `ChatOpenAI` is used through `langchain-openai` when `OPENAI_API_KEY` is available
+- `HuggingFacePipeline` is used through `langchain-huggingface` as the fallback answer model
+- LangChain prompt templates are used to keep planning and answer generation prompts structured
 
 ## Project Structure
 
@@ -20,6 +48,9 @@ app/
   main.py
   routes/
   services/
+    agent_service.py
+    document_service.py
+    llm_service.py
   embedding.py
   rag.py
   db/
@@ -59,7 +90,7 @@ pip install -r requirements.txt
 3. Start the application:
 
 ```bash
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
 4. Open `http://localhost:8000`
@@ -74,24 +105,31 @@ docker-compose up --build
 
 Open `http://localhost:8000` after the container starts.
 
+## Frontend Highlights
+
+- Drag a PDF into the upload zone or click to browse
+- Use `Ctrl + Enter` in the question box to submit quickly
+- Copy the generated answer with one click
+- Reuse recent questions from browser-stored history
+- Delete documents directly from the indexed library panel
+- View the agent workflow steps for each answer
+- Open long source chunks in a modal instead of stretching the page
+
 ## API Endpoints
 
 ### `POST /upload`
 
 - Accepts `multipart/form-data` with a `file` field
 - Saves the uploaded PDF to `uploads/`
-- Extracts text and indexes chunks into ChromaDB
+- Extracts text, preserves page references, and indexes chunks into ChromaDB
 
-Successful response:
+### `GET /documents`
 
-```json
-{
-  "message": "PDF uploaded and indexed successfully.",
-  "filename": "example.pdf",
-  "document_id": "uuid",
-  "chunks_indexed": 4
-}
-```
+Returns the indexed documents currently available in ChromaDB.
+
+### `DELETE /documents/{document_id}`
+
+Deletes an indexed document from ChromaDB and removes its uploaded file when available.
 
 ### `POST /ask`
 
@@ -104,21 +142,36 @@ Request body:
 }
 ```
 
-Successful response:
+If `document_id` is omitted or `null`, the query searches across all indexed documents.
+
+Successful response includes the agent metadata:
 
 ```json
 {
-  "answer": "The contract lasts for 12 months.",
+  "answer": "The contract lasts for 12 months [Source 1].",
   "provider": "OpenAI (gpt-4o-mini)",
-  "sources": [
-    {
-      "text": "Relevant chunk text...",
-      "document_id": "uuid",
-      "filename": "example.pdf",
-      "chunk_index": 0,
-      "distance": 0.12
-    }
-  ]
+  "documents_used": ["example.pdf"],
+  "sources": [],
+  "agent": {
+    "enabled": true,
+    "intent": "fact_lookup",
+    "strategy": "targeted retrieval",
+    "planner_mode": "langchain_structured",
+    "steps": [
+      {
+        "step": "Plan intent",
+        "detail": "Detected 'fact_lookup' intent and selected the 'targeted retrieval' strategy using the langchain structured planner."
+      },
+      {
+        "step": "Retrieve evidence",
+        "detail": "Ran the primary retrieval pass with the query: What is the contract duration?"
+      },
+      {
+        "step": "Generate answer",
+        "detail": "Produced a grounded answer from the merged evidence with inline source citations."
+      }
+    ]
+  }
 }
 ```
 
@@ -129,6 +182,7 @@ Successful response:
 - Invalid or unreadable PDF
 - Empty question
 - No indexed content found
+- Delete requests for missing documents
 
 ## CI/CD
 
@@ -138,4 +192,6 @@ The GitHub Actions workflow installs dependencies, runs a basic Python compile c
 
 - The application is designed to stay simple and modular.
 - Chroma data and uploads are stored outside the app code directory for easier container mounting.
+- Question history is stored in the browser and is not shared across devices.
 - For production, place the service behind a reverse proxy and use managed persistent storage.
+

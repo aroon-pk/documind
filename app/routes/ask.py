@@ -15,10 +15,10 @@ class AskRequest(BaseModel):
 
 @router.post("/ask")
 async def ask_question(payload: AskRequest, request: Request):
-    rag_service = request.app.state.rag_service
+    agent_service = request.app.state.agent_service
 
     try:
-        return rag_service.answer_question(
+        return agent_service.ask(
             question=payload.question,
             document_id=payload.document_id,
         )
